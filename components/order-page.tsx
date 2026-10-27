@@ -115,7 +115,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
           {heroImageUrl && <img className="hero-image" src={heroImageUrl} alt="" />}
           <span className="hero-spark spark-one">✳</span>
           <span className="hero-spark spark-two">✦</span>
-          <span className="hero-label">fresco<br />y rico<br />como tu vieja!</span>
+          <span className="hero-label">fresco<br />y rico</span>
         </div>
       </section>
 
