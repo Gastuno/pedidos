@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AuthButton from "./auth-button";
 
 type Product = {
   id: string;
@@ -95,13 +96,17 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
         </a>
         <div className="topbar-note">
         </div>
-        <a className="top-cart" href="#tu-pedido" aria-label={`Ver pedido, ${itemCount} productos`}>
-          <svg className="shopping-bag-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-            <path d="M5 8h14l1 13H4L5 8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-            <path d="M9 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          <span className="top-cart-count">{itemCount}</span>
-        </a>
+        <AuthButton
+          cartButton={
+            <a className="top-cart" href="#tu-pedido" aria-label={`Ver pedido, ${itemCount} productos`}>
+              <svg className="shopping-bag-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <path d="M5 8h14l1 13H4L5 8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M9 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+              <span className="top-cart-count">{itemCount}</span>
+            </a>
+          }
+        />
       </header>
 
       <section className="hero">

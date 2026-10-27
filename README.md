@@ -8,6 +8,8 @@ En `.env` configurá:
 
 - `DATABASE_URL`: conexión de la aplicación a Supabase (pooler recomendado).
 - `DIRECT_URL`: conexión directa de Supabase para ejecutar migraciones.
+- `NEXT_PUBLIC_SUPABASE_URL`: URL del proyecto de Supabase.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: clave pública (anon/publishable) del proyecto para autenticación.
 
 No compartas ni subas estos archivos al repositorio.
 
