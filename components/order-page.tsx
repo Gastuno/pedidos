@@ -94,8 +94,6 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
           <span>pedivos<span className="brand-period">.</span></span>
         </a>
         <div className="topbar-note">
-          <span className="status-dot" />
-          <span>Hecho en el momento</span>
         </div>
         <a className="top-cart" href="#tu-pedido" aria-label={`Ver pedido, ${itemCount} productos`}>
           <svg className="shopping-bag-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
@@ -108,9 +106,8 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
 
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow"><span className="eyebrow-dot" /> BUENAS COSAS, SIN VUELTAS</span>
           <h1>Tu próximo<br /><span>favorito</span> está acá.</h1>
-          <p>Comida rica, hecha con cariño y lista para compartir. Elegí lo tuyo.</p>
+          <p>Comida rica, al momento.</p>
           <a className="hero-cta" href="#menu">Ver el menú <span aria-hidden="true">↓</span></a>
         </div>
         <div className="hero-art" aria-hidden="true">
@@ -118,10 +115,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
           {heroImageUrl && <img className="hero-image" src={heroImageUrl} alt="" />}
           <span className="hero-spark spark-one">✳</span>
           <span className="hero-spark spark-two">✦</span>
-          <span className="hero-label">fresco<br />y rico</span>
-        </div>
-        <div className="hero-bottom">
-          <span>DESLIZÁ Y ELEGÍ</span><span className="hero-line" /><span>01 — 03</span>
+          <span className="hero-label">fresco<br />y rico<br />como tu vieja!</span>
         </div>
       </section>
 
@@ -176,7 +170,6 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
         <aside className="order-panel" id="tu-pedido">
           <div className="order-panel-heading">
             <div>
-              <span className="eyebrow">CASI TUYO</span>
               <h2>Tu pedido <span className="order-count">{itemCount}</span></h2>
             </div>
             <span className="bag-icon" aria-hidden="true">↗</span>
@@ -310,14 +303,6 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
           )}
         </aside>
       </section>
-
-      <footer className="site-footer">
-        <a className="brand footer-brand" href="#" aria-label="Pedivos, inicio">
-          <span className="brand-mark">P</span><span>pedivos<span className="brand-period">.</span></span>
-        </a>
-        <span>Hecho con cariño. Y con hambre.</span>
-        <span className="footer-year">© Pedivos 2026</span>
-      </footer>
     </main>
   );
 }
