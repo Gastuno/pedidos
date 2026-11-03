@@ -1,4 +1,4 @@
-# Miga — pedidos
+# Pedivos
 
 Aplicación sencilla para mostrar un menú y guardar pedidos en PostgreSQL de Supabase con Prisma.
 
