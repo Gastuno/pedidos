@@ -3,33 +3,175 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  phone     String?
-  address   String?
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
+  id                  String       @id @default(uuid())
+  email               String       @unique
+  name                String?
+  phone               String?
+  address             String?
+  dni                 String?      @unique
+  nombre              String?
+  apellido            String?
+  puntos              Int          @default(0)
+  role                Role         @default(USER)
+  fechaCreacion       DateTime     @default(now()) @map("createdAt")
+  direcciones         DirUsuario[]
+  pedidos             Pedido[]
+  mediosPagoGuardados MpCliente[]
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   name        String
   description String?
   price       Float
-  stock       Int      @default(0)
+  stock       Int              @default(0)
   imageUrl    String?
-  createdAt   DateTime @default(now())
+  estado      String           @default("ACTIVO")
+  isCombo     Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  pedidos     DetallePedido[]
+  locales     ListaProductos[]
+  categorias  Categoria[]
 }
 
 model Pedido {
-  id       Int      @id @default(autoincrement())
-  detalle  String
-  creadoEn DateTime @default(now()) @db.Timestamp(3)
+  id               Int             @id @default(autoincrement())
+  detalle          String?
+  fecha            DateTime        @default(now()) @map("creadoEn") @db.Timestamp(3)
+  montoTotal       Float?
+  puntosAdquiridos Int             @default(0)
+  cliente          String?
+  telefono         String?
+  modalidad        String?
+  direccion        String?
+  notas            String?
+  idUsuario        String?
+  idEstado         Int?
+  idMP             Int?
+  idNegocio        Int?
+  usuario          User?           @relation(fields: [idUsuario], references: [id], onDelete: SetNull)
+  estado           Estado?         @relation(fields: [idEstado], references: [id], onDelete: SetNull)
+  medioPago        MedioPago?      @relation(fields: [idMP], references: [id], onDelete: SetNull)
+  local            Local?          @relation(fields: [idNegocio], references: [id], onDelete: SetNull)
+  detalles         DetallePedido[]
+  pagos            Pago[]
+}
+
+model Estado {
+  id      Int      @id @default(autoincrement())
+  nombre  String   @unique
+  pedidos Pedido[]
+}
+
+model DetallePedido {
+  id             Int      @id @default(autoincrement())
+  idPedido       Int
+  idProducto     String?
+  nombreProducto String
+  precioUnitario Float
+  cantidad       Int
+  pedido         Pedido   @relation(fields: [idPedido], references: [id], onDelete: Cascade)
+  producto       Product? @relation(fields: [idProducto], references: [id], onDelete: SetNull)
+}
+
+model Ciudad {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  calles Calle[]
+}
+
+model Calle {
+  id          Int         @id @default(autoincrement())
+  nombre      String
+  idCiudad    Int
+  ciudad      Ciudad      @relation(fields: [idCiudad], references: [id], onDelete: Restrict)
+  direcciones Direccion[]
+
+  @@unique([nombre, idCiudad])
+}
+
+model Direccion {
+  id       Int          @id @default(autoincrement())
+  altura   String
+  idCalle  Int
+  calle    Calle        @relation(fields: [idCalle], references: [id], onDelete: Restrict)
+  usuarios DirUsuario[]
+  locales  Local[]
+}
+
+model DirUsuario {
+  id          Int       @id @default(autoincrement())
+  idUsuario   String
+  idDireccion Int
+  usuario     User      @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
+  direccion   Direccion @relation(fields: [idDireccion], references: [id], onDelete: Cascade)
+
+  @@unique([idUsuario, idDireccion])
+}
+
+model Local {
+  id          Int              @id @default(autoincrement())
+  idDireccion Int
+  direccion   Direccion        @relation(fields: [idDireccion], references: [id], onDelete: Restrict)
+  pedidos     Pedido[]
+  productos   ListaProductos[]
+}
+
+model ListaProductos {
+  id         Int     @id @default(autoincrement())
+  idProducto String
+  idLocal    Int
+  producto   Product @relation(fields: [idProducto], references: [id], onDelete: Cascade)
+  local      Local   @relation(fields: [idLocal], references: [id], onDelete: Cascade)
+
+  @@unique([idProducto, idLocal])
+}
+
+model MedioPago {
+  id       Int         @id @default(autoincrement())
+  nombre   String      @unique
+  pedidos  Pedido[]
+  pagos    Pago[]
+  usuarios MpCliente[]
+}
+
+model MpCliente {
+  id        Int       @id @default(autoincrement())
+  idUsuario String
+  idMP      Int
+  usuario   User      @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
+  medioPago MedioPago @relation(fields: [idMP], references: [id], onDelete: Cascade)
+
+  @@unique([idUsuario, idMP])
+}
+
+model Pago {
+  id        Int       @id @default(autoincrement())
+  idPedido  Int
+  idMP      Int
+  fecha     DateTime  @default(now()) @db.Timestamp(3)
+  hora      DateTime? @db.Time(0)
+  pedido    Pedido    @relation(fields: [idPedido], references: [id], onDelete: Cascade)
+  medioPago MedioPago @relation(fields: [idMP], references: [id], onDelete: Restrict)
+}
+
+model Categoria {
+  id         Int      @id @default(autoincrement())
+  nombre     String
+  idProducto String
+  idVariante Int
+  producto   Product  @relation(fields: [idProducto], references: [id], onDelete: Cascade)
+  variante   Variante @relation(fields: [idVariante], references: [id], onDelete: Restrict)
+}
+
+model Variante {
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  categorias Categoria[]
 }
 
 enum Role {

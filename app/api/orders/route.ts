@@ -130,9 +130,32 @@ export async function POST(request: Request) {
         total,
       };
 
+      const pendingState = await tx.estado.upsert({
+        where: { nombre: "Pendiente" },
+        update: {},
+        create: { nombre: "Pendiente" },
+        select: { id: true },
+      });
+
       const pedido = await tx.pedido.create({
         data: {
-          detalle: JSON.stringify(details),
+          montoTotal: total,
+          puntosAdquiridos: 0,
+          cliente: details.cliente,
+          telefono: details.telefono,
+          modalidad: details.modalidad,
+          direccion: details.direccion,
+          notas: details.notas,
+          usuario: { connect: { id: auth.user.id } },
+          estado: { connect: { id: pendingState.id } },
+          detalles: {
+            create: orderItems.map((item) => ({
+              idProducto: item.productId,
+              nombreProducto: item.name,
+              precioUnitario: item.unitPrice,
+              cantidad: item.quantity,
+            })),
+          },
         },
         select: { id: true },
       });
