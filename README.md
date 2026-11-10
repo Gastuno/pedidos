@@ -24,6 +24,6 @@ npm run dev
 
 La carga inicial agrega ocho productos de ejemplo únicamente si el catálogo está vacío. Las imágenes se leen del campo `imageUrl` de cada fila en `Product`; `npm run db:seed` completa las imágenes faltantes de los productos de ejemplo sin reemplazar URLs que ya hayas configurado.
 
-Los pedidos se guardan en la tabla existente `Pedido`: el campo `detalle` conserva los datos de contacto y el detalle de los productos como JSON. No hace falta modificar el esquema de Supabase para empezar a usar la página.
+Los pedidos se guardan en la tabla existente `Pedido`: el campo `detalle` conserva los datos de contacto y el detalle de los productos como JSON. El registro guarda teléfono y dirección en los campos ya existentes `User.phone` y `User.address`; Prisma refleja esos campos en `prisma/schema.prisma`, sin requerir una migración.
 
 Para una compilación de producción: `npm run build` y `npm run start`.

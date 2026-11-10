@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { getAuthenticatedSupabaseUser } from "../../../lib/supabase-server";
+import { ensureUserProfile } from "../../../lib/user-profile";
 
 type OrderRequest = {
   customerName: string;
-  phone: string;
   fulfillment: "PICKUP" | "DELIVERY";
-  address?: string;
   notes?: string;
   items: { productId: string; quantity: number }[];
 };
@@ -22,23 +22,12 @@ function isOrderRequest(value: unknown): value is OrderRequest {
     typeof body.customerName !== "string" ||
     body.customerName.trim().length < 2 ||
     body.customerName.trim().length > 80 ||
-    typeof body.phone !== "string" ||
-    !/^[+0-9()\s.-]{6,24}$/.test(body.phone.trim()) ||
     (body.fulfillment !== "PICKUP" && body.fulfillment !== "DELIVERY") ||
     (body.notes !== undefined &&
       (typeof body.notes !== "string" || body.notes.length > 300)) ||
     !Array.isArray(body.items) ||
     body.items.length === 0 ||
     body.items.length > 20
-  ) {
-    return false;
-  }
-
-  if (
-    body.fulfillment === "DELIVERY" &&
-    (typeof body.address !== "string" ||
-      body.address.trim().length < 5 ||
-      body.address.trim().length > 200)
   ) {
     return false;
   }
@@ -64,6 +53,31 @@ function isOrderRequest(value: unknown): value is OrderRequest {
 }
 
 export async function POST(request: Request) {
+  let auth: Awaited<ReturnType<typeof getAuthenticatedSupabaseUser>>;
+  try {
+    auth = await getAuthenticatedSupabaseUser(request);
+  } catch (error) {
+    console.error("No se pudo validar la sesión para crear el pedido.", error);
+    return NextResponse.json(
+      { error: "No pudimos validar tu sesión. Probá de nuevo." },
+      { status: 503 },
+    );
+  }
+
+  if (auth.error) {
+    if (auth.status === 400 || auth.status === 401 || auth.status === 403) {
+      return NextResponse.json({ error: "Iniciá sesión para hacer tu pedido." }, { status: 401 });
+    }
+    console.error("No se pudo validar la sesión para crear el pedido.", auth.error);
+    return NextResponse.json(
+      { error: "No pudimos validar tu sesión. Probá de nuevo." },
+      { status: 503 },
+    );
+  }
+  if (!auth.user) {
+    return NextResponse.json({ error: "Iniciá sesión para hacer tu pedido." }, { status: 401 });
+  }
+
   const body: unknown = await request.json().catch(() => null);
   if (!isOrderRequest(body)) {
     return NextResponse.json(
@@ -73,6 +87,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const profile = await ensureUserProfile(auth.user);
+    if (!profile?.phone || !profile.address) {
+      return NextResponse.json(
+        { error: "No encontramos tus datos de contacto. Volvé a iniciar sesión." },
+        { status: 409 },
+      );
+    }
+
     const order = await prisma.$transaction(async (tx) => {
       const products = await tx.product.findMany({
         where: { id: { in: body.items.map((item) => item.productId) } },
@@ -100,10 +122,9 @@ export async function POST(request: Request) {
 
       const details = {
         cliente: body.customerName.trim(),
-        telefono: body.phone.trim(),
+        telefono: profile.phone,
         modalidad: body.fulfillment,
-        direccion:
-          body.fulfillment === "DELIVERY" ? body.address?.trim() ?? null : null,
+        direccion: body.fulfillment === "DELIVERY" ? profile.address : null,
         notas: body.notes?.trim() || null,
         items: orderItems,
         total,

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AuthButton from "./auth-button";
+import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 type Product = {
   id: string;
@@ -24,12 +25,45 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [fulfillment, setFulfillment] = useState<Fulfillment>("PICKUP");
   const [customerName, setCustomerName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe = () => {};
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      supabase.auth.getSession().then(({ data, error: sessionError }) => {
+        if (!active) return;
+        if (sessionError) setError(sessionError.message);
+        setIsAuthenticated(Boolean(data.session));
+        setAuthLoading(false);
+      }).catch((sessionError: unknown) => {
+        if (!active) return;
+        setError(sessionError instanceof Error ? sessionError.message : "No se pudo verificar tu sesión.");
+        setAuthLoading(false);
+      });
+
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsAuthenticated(Boolean(session));
+        setAuthLoading(false);
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+    } catch (clientError) {
+      setError(clientError instanceof Error ? clientError.message : "No se pudo verificar tu sesión.");
+      setAuthLoading(false);
+    }
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   const cartItems = products.filter((product) => cart[product.id]);
   const itemCount = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
@@ -56,14 +90,23 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
     setError("");
 
     try {
+      const { data, error: sessionError } = await getSupabaseBrowserClient().auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!data.session) {
+        setIsAuthenticated(false);
+        setError("Iniciá sesión para confirmar tu pedido.");
+        return;
+      }
+
       const response = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
         body: JSON.stringify({
           customerName,
-          phone,
           fulfillment,
-          ...(fulfillment === "DELIVERY" ? { address } : {}),
           notes,
           items: cartItems.map((product) => ({
             productId: product.id,
@@ -224,86 +267,69 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
                 </ul>
               )}
 
-              <form className="checkout-form" onSubmit={placeOrder}>
-                <fieldset className="fulfillment-options">
-                  <legend>¿Cómo lo querés?</legend>
-                  <button
-                    className={fulfillment === "PICKUP" ? "fulfillment-option active" : "fulfillment-option"}
-                    onClick={() => setFulfillment("PICKUP")}
-                    type="button"
-                  >
-                    Paso a buscar
-                  </button>
-                  <button
-                    className={fulfillment === "DELIVERY" ? "fulfillment-option active" : "fulfillment-option"}
-                    onClick={() => setFulfillment("DELIVERY")}
-                    type="button"
-                  >
-                    Envío
-                  </button>
-                </fieldset>
+              {authLoading ? (
+                <p className="secure-note">Verificando tu cuenta...</p>
+              ) : !isAuthenticated ? (
+                <div className="cart-empty">
+                  {error && <p className="form-error" role="alert">{error}</p>}
+                  <p>Iniciá sesión para confirmar tu pedido.</p>
+                </div>
+              ) : (
+                <form className="checkout-form" onSubmit={placeOrder}>
+                  <fieldset className="fulfillment-options">
+                    <legend>¿Cómo lo querés?</legend>
+                    <button
+                      className={fulfillment === "PICKUP" ? "fulfillment-option active" : "fulfillment-option"}
+                      onClick={() => setFulfillment("PICKUP")}
+                      type="button"
+                    >
+                      Paso a buscar
+                    </button>
+                    <button
+                      className={fulfillment === "DELIVERY" ? "fulfillment-option active" : "fulfillment-option"}
+                      onClick={() => setFulfillment("DELIVERY")}
+                      type="button"
+                    >
+                      Envío
+                    </button>
+                  </fieldset>
 
-                <label className="field-label">
-                  Tu nombre
-                  <input
-                    autoComplete="name"
-                    maxLength={80}
-                    minLength={2}
-                    onChange={(event) => setCustomerName(event.target.value)}
-                    placeholder="¿Cómo te llamás?"
-                    required
-                    value={customerName}
-                  />
-                </label>
-                <label className="field-label">
-                  Teléfono
-                  <input
-                    autoComplete="tel"
-                    maxLength={24}
-                    onChange={(event) => setPhone(event.target.value)}
-                    placeholder="Para avisarte cuando esté"
-                    required
-                    type="tel"
-                    value={phone}
-                  />
-                </label>
-                {fulfillment === "DELIVERY" && (
                   <label className="field-label">
-                    Dirección de entrega
+                    Tu nombre
                     <input
-                      autoComplete="street-address"
-                      maxLength={200}
-                      minLength={5}
-                      onChange={(event) => setAddress(event.target.value)}
-                      placeholder="Calle, número y barrio"
+                      autoComplete="name"
+                      maxLength={80}
+                      minLength={2}
+                      onChange={(event) => setCustomerName(event.target.value)}
+                      placeholder="¿Cómo te llamás?"
                       required
-                      value={address}
+                      value={customerName}
                     />
                   </label>
-                )}
-                <label className="field-label">
-                  Nota para el local <span className="optional">(opcional)</span>
-                  <textarea
-                    maxLength={300}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Algún detalle que debamos saber..."
-                    rows={2}
-                    value={notes}
-                  />
-                </label>
+                  <label className="field-label">
+                    Nota para el local <span className="optional">(opcional)</span>
+                    <textarea
+                      maxLength={300}
+                      onChange={(event) => setNotes(event.target.value)}
+                      placeholder="Algún detalle que debamos saber..."
+                      rows={2}
+                      value={notes}
+                    />
+                  </label>
 
-                {error && <p className="form-error" role="alert">{error}</p>}
+                  {error && <p className="form-error" role="alert">{error}</p>}
 
-                <div className="order-total">
-                  <span>Total</span>
-                  <strong>{money.format(total)}</strong>
-                </div>
-                <button className="submit-order" disabled={itemCount === 0 || submitting} type="submit">
-                  {submitting ? "Enviando pedido..." : "Confirmar pedido"}
-                  {!submitting && <span aria-hidden="true">→</span>}
-                </button>
-                <p className="secure-note"><span>✦</span> Tu pedido se confirma al enviarlo al local.</p>
-              </form>
+                  <div className="order-total">
+                    <span>Total</span>
+                    <strong>{money.format(total)}</strong>
+                  </div>
+                  <button className="submit-order" disabled={itemCount === 0 || submitting} type="submit">
+                    {submitting ? "Enviando pedido..." : "Confirmar pedido"}
+                    {!submitting && <span aria-hidden="true">→</span>}
+                  </button>
+                  <p className="secure-note"><span>✦</span> Tu pedido se confirma al enviarlo al local.</p>
+                </form>
+              )}
             </>
           )}
         </aside>

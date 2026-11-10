@@ -8,12 +8,33 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 type Props = { cartButton: ReactNode };
 type AuthMode = "sign-in" | "sign-up";
 
+async function syncProfile(accessToken: string) {
+  const response = await fetch("/api/profile", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const result: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      typeof result === "object" &&
+      result !== null &&
+      "error" in result &&
+      typeof result.error === "string"
+        ? result.error
+        : "No se pudieron guardar los datos de tu cuenta.";
+    throw new Error(message);
+  }
+}
+
 export default function AuthButton({ cartButton }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -64,7 +85,7 @@ export default function AuthButton({ cartButton }: Props) {
     setError("");
 
     try {
-      const { error: signInError } = await getSupabaseBrowserClient().auth.signInWithPassword({
+      const { data, error: signInError } = await getSupabaseBrowserClient().auth.signInWithPassword({
         email,
         password,
       });
@@ -74,6 +95,7 @@ export default function AuthButton({ cartButton }: Props) {
         return;
       }
 
+      if (data.session) await syncProfile(data.session.access_token);
       setPassword("");
       setModalOpen(false);
     } catch (signInError) {
@@ -93,6 +115,12 @@ export default function AuthButton({ cartButton }: Props) {
       const { data, error: signUpError } = await getSupabaseBrowserClient().auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            phone: phone.trim(),
+            address: address.trim(),
+          },
+        },
       });
 
       if (signUpError) {
@@ -102,6 +130,7 @@ export default function AuthButton({ cartButton }: Props) {
 
       setPassword("");
       if (data.session) {
+        await syncProfile(data.session.access_token);
         setModalOpen(false);
       } else {
         setSuccess("Revisá tu correo para confirmar la creación de tu cuenta.");
@@ -193,6 +222,35 @@ export default function AuthButton({ cartButton }: Props) {
                   value={password}
                 />
               </label>
+              {mode === "sign-up" && (
+                <>
+                  <label className="field-label">
+                    Teléfono
+                    <input
+                      autoComplete="tel"
+                      minLength={6}
+                      maxLength={24}
+                      onChange={(event) => setPhone(event.target.value)}
+                      placeholder="Tu teléfono de contacto"
+                      required
+                      type="tel"
+                      value={phone}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Dirección
+                    <input
+                      autoComplete="street-address"
+                      maxLength={200}
+                      minLength={5}
+                      onChange={(event) => setAddress(event.target.value)}
+                      placeholder="Calle, número y barrio"
+                      required
+                      value={address}
+                    />
+                  </label>
+                </>
+              )}
               {error && <p className="form-error" role="alert">{error}</p>}
               {success && <p className="auth-success" role="status">{success}</p>}
               <button className="submit-order" disabled={submitting} type="submit">
