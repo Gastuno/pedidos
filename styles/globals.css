@@ -95,6 +95,21 @@ button { color: inherit; }
 .product-title-row h3 { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.4; }
 .product-price { flex-shrink: 0; color: var(--orange-dark); font-size: 12px; font-weight: 750; }
 .product-info > p { min-height: 34px; margin: 8px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.product-management { display: grid; gap: 14px; margin: 20px 0; }
+.admin-product-button, .edit-product-button { padding: 9px 12px; border: 1px solid var(--orange); border-radius: 4px; background: var(--orange); color: white; cursor: pointer; font-size: 11px; font-weight: 700; }
+.admin-product-button:hover, .edit-product-button:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+.admin-product-button:disabled { cursor: not-allowed; opacity: .6; }
+.edit-product-button { width: 100%; margin-bottom: 8px; background: white; color: var(--orange-dark); }
+.edit-product-button:hover { color: white; }
+.product-editor { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+.product-editor h3 { margin: 0; font-family: Georgia, serif; font-size: 20px; font-weight: 500; }
+.product-editor .field-label { margin: 0; }
+.product-editor .field-label input, .product-editor .field-label textarea { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 4px; outline: none; background: white; color: var(--ink); font-size: 11px; }
+.product-editor .field-label input:focus, .product-editor .field-label textarea:focus { border-color: var(--orange); }
+.product-editor-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.product-cancel-button { padding: 9px 12px; border: 1px solid var(--line); border-radius: 4px; background: white; cursor: pointer; font-size: 11px; }
+.product-cancel-button:disabled { cursor: not-allowed; opacity: .6; }
+.admin-error { margin: 16px 0; }
 .add-button { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 4px; background: white; cursor: pointer; font-size: 10px; font-weight: 650; transition: all .2s; }
 .add-button:hover, .add-button.has-quantity { border-color: var(--orange); color: var(--orange-dark); }
 .empty-menu { padding: 55px 20px; text-align: center; border: 1px dashed #ded8ce; border-radius: 8px; }

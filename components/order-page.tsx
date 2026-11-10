@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AuthButton from "./auth-button";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
@@ -12,8 +12,39 @@ type Product = {
   imageUrl: string | null;
 };
 
+type ProductForm = {
+  name: string;
+  description: string;
+  price: string;
+  imageUrl: string;
+};
+
 type Props = { products: Product[]; heroImageUrl: string | null };
 type Fulfillment = "PICKUP" | "DELIVERY";
+
+const emptyProductForm: ProductForm = {
+  name: "",
+  description: "",
+  price: "",
+  imageUrl: "",
+};
+
+function isProduct(value: unknown): value is Product {
+  if (!isRecord(value)) return false;
+  const product = value;
+  return (
+    typeof product.id === "string" &&
+    typeof product.name === "string" &&
+    (typeof product.description === "string" || product.description === null) &&
+    typeof product.price === "number" &&
+    Number.isFinite(product.price) &&
+    (typeof product.imageUrl === "string" || product.imageUrl === null)
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const money = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -22,19 +53,70 @@ const money = new Intl.NumberFormat("es-AR", {
 });
 
 export default function OrderPage({ products, heroImageUrl }: Props) {
+  const [menuProducts, setMenuProducts] = useState(products);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [fulfillment, setFulfillment] = useState<Fulfillment>("PICKUP");
   const [customerName, setCustomerName] = useState("");
   const [notes, setNotes] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminError, setAdminError] = useState("");
+  const [productEditorOpen, setProductEditorOpen] = useState(false);
+  const [productEditorScrollRequest, setProductEditorScrollRequest] = useState(0);
+  const productEditorRef = useRef<HTMLFormElement>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [productError, setProductError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState("");
 
   useEffect(() => {
     let active = true;
+    let adminCheckId = 0;
     let unsubscribe = () => {};
+
+    async function checkAdmin(accessToken: string | null) {
+      const currentCheckId = ++adminCheckId;
+      setIsAdmin(false);
+      setAdminError("");
+      if (!accessToken) return;
+
+      try {
+        const response = await fetch("/api/admin/products", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!active || currentCheckId !== adminCheckId) return;
+        if (response.status === 401 || response.status === 403) return;
+        const result: unknown = await response.json().catch(() => null);
+        if (!active || currentCheckId !== adminCheckId) return;
+        if (!response.ok) {
+          const message =
+            typeof result === "object" &&
+            result !== null &&
+            "error" in result &&
+            typeof result.error === "string"
+              ? result.error
+              : "No se pudieron verificar tus permisos de administración.";
+          throw new Error(message);
+        }
+        setIsAdmin(
+          typeof result === "object" &&
+            result !== null &&
+            "isAdmin" in result &&
+            result.isAdmin === true,
+        );
+      } catch (adminCheckError) {
+        if (!active || currentCheckId !== adminCheckId) return;
+        setAdminError(
+          adminCheckError instanceof Error
+            ? adminCheckError.message
+            : "No se pudieron verificar tus permisos de administración.",
+        );
+      }
+    }
 
     try {
       const supabase = getSupabaseBrowserClient();
@@ -42,6 +124,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
         if (!active) return;
         if (sessionError) setError(sessionError.message);
         setIsAuthenticated(Boolean(data.session));
+        void checkAdmin(data.session?.access_token ?? null);
         setAuthLoading(false);
       }).catch((sessionError: unknown) => {
         if (!active) return;
@@ -51,6 +134,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
 
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         setIsAuthenticated(Boolean(session));
+        void checkAdmin(session?.access_token ?? null);
         setAuthLoading(false);
       });
       unsubscribe = () => data.subscription.unsubscribe();
@@ -65,12 +149,18 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
     };
   }, []);
 
-  const cartItems = products.filter((product) => cart[product.id]);
+  const cartItems = menuProducts.filter((product) => cart[product.id]);
   const itemCount = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
   const total = cartItems.reduce(
     (sum, product) => sum + product.price * cart[product.id],
     0,
   );
+
+  useEffect(() => {
+    if (productEditorOpen && productEditorScrollRequest > 0) {
+      productEditorRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+    }
+  }, [productEditorOpen, productEditorScrollRequest]);
 
   function changeQuantity(productId: string, delta: number) {
     setCart((current) => {
@@ -82,6 +172,82 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
       }
       return { ...current, [productId]: quantity };
     });
+  }
+
+  function openProductEditor(product: Product | null = null) {
+    setEditingProduct(product);
+    setProductForm(
+      product
+        ? {
+            name: product.name,
+            description: product.description ?? "",
+            price: String(product.price),
+            imageUrl: product.imageUrl ?? "",
+          }
+        : emptyProductForm,
+    );
+    setProductError("");
+    setProductEditorOpen(true);
+    setProductEditorScrollRequest((request) => request + 1);
+  }
+
+  async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingProduct(true);
+    setProductError("");
+
+    try {
+      const { data, error: sessionError } = await getSupabaseBrowserClient().auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!data.session) {
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        throw new Error("Iniciá sesión para administrar productos.");
+      }
+
+      const response = await fetch("/api/admin/products", {
+        method: editingProduct ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+        body: JSON.stringify({
+          ...(editingProduct ? { id: editingProduct.id } : {}),
+          name: productForm.name,
+          description: productForm.description,
+          price: Number(productForm.price),
+          imageUrl: productForm.imageUrl,
+        }),
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          typeof result === "object" &&
+          result !== null &&
+          "error" in result &&
+          typeof result.error === "string"
+            ? result.error
+            : "No pudimos guardar el producto.";
+        throw new Error(message);
+      }
+
+      if (!isProduct(result)) throw new Error("La respuesta del producto no es válida.");
+      const savedProduct = result;
+      setMenuProducts((current) =>
+        editingProduct
+          ? current.map((product) => product.id === savedProduct.id ? savedProduct : product)
+          : [...current, savedProduct].sort((a, b) => a.name.localeCompare(b.name, "es")),
+      );
+      setProductEditorOpen(false);
+      setEditingProduct(null);
+      setProductForm(emptyProductForm);
+    } catch (saveError) {
+      setProductError(
+        saveError instanceof Error ? saveError.message : "No pudimos guardar el producto.",
+      );
+    } finally {
+      setSavingProduct(false);
+    }
   }
 
   async function placeOrder(event: React.FormEvent<HTMLFormElement>) {
@@ -172,17 +338,91 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
               <span className="eyebrow">EL MENÚ</span>
               <h2>¿Qué se te antoja?</h2>
             </div>
-            <span className="menu-count">{products.length} cosas ricas</span>
+            <span className="menu-count">{menuProducts.length} cosas ricas</span>
           </div>
 
-          {products.length === 0 ? (
+          {adminError && <p className="form-error admin-error" role="alert">{adminError}</p>}
+
+          {isAdmin && (
+            <div className="product-management">
+              <button
+                className="admin-product-button"
+                onClick={() => openProductEditor()}
+                type="button"
+              >
+                ＋ Agregar producto
+              </button>
+              {productEditorOpen && (
+                <form className="product-editor" onSubmit={saveProduct} ref={productEditorRef}>
+                  <h3>{editingProduct ? "Editar producto" : "Nuevo producto"}</h3>
+                  <label className="field-label">
+                    Nombre
+                    <input
+                      autoComplete="off"
+                      maxLength={100}
+                      minLength={2}
+                      onChange={(event) => setProductForm({ ...productForm, name: event.target.value })}
+                      required
+                      value={productForm.name}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Descripción <span className="optional">(opcional)</span>
+                    <textarea
+                      maxLength={500}
+                      onChange={(event) => setProductForm({ ...productForm, description: event.target.value })}
+                      rows={3}
+                      value={productForm.description}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Precio
+                    <input
+                      inputMode="decimal"
+                      min="0"
+                      onChange={(event) => setProductForm({ ...productForm, price: event.target.value })}
+                      required
+                      step="0.01"
+                      type="number"
+                      value={productForm.price}
+                    />
+                  </label>
+                  <label className="field-label">
+                    URL de imagen <span className="optional">(opcional)</span>
+                    <input
+                      maxLength={2048}
+                      onChange={(event) => setProductForm({ ...productForm, imageUrl: event.target.value })}
+                      type="url"
+                      value={productForm.imageUrl}
+                    />
+                  </label>
+                  {productError && <p className="form-error" role="alert">{productError}</p>}
+                  <div className="product-editor-actions">
+                    <button className="admin-product-button" disabled={savingProduct} type="submit">
+                      {savingProduct ? "Guardando..." : "Guardar producto"}
+                    </button>
+                    <button
+                      className="product-cancel-button"
+                      disabled={savingProduct}
+                      onClick={() => setProductEditorOpen(false)}
+                      type="button"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {menuProducts.length === 0 ? (
             <div className="empty-menu">
               <h3>Estamos preparando el menú</h3>
               <p>En un ratito vas a poder pedir tus favoritos.</p>
             </div>
           ) : (
             <div className="product-grid">
-              {products.map((product, index) => (
+              {menuProducts.map((product, index) => (
                 <article className="product-card" key={product.id}>
                   <div className={`product-visual visual-${index % 4}`}>
                     {product.imageUrl ? (
@@ -198,6 +438,15 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
                       <span className="product-price">{money.format(product.price)}</span>
                     </div>
                     {product.description && <p>{product.description}</p>}
+                    {isAdmin && (
+                      <button
+                        className="edit-product-button"
+                        onClick={() => openProductEditor(product)}
+                        type="button"
+                      >
+                        Editar producto
+                      </button>
+                    )}
                     <button
                       className={`add-button${cart[product.id] ? " has-quantity" : ""}`}
                       onClick={() => changeQuantity(product.id, 1)}
