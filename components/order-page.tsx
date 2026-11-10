@@ -161,8 +161,6 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
         <div className="hero-art" aria-hidden="true">
           <div className="hero-sun" />
           {heroImageUrl && <img className="hero-image" src={heroImageUrl} alt="" />}
-          <span className="hero-spark spark-one">✳</span>
-          <span className="hero-spark spark-two">✦</span>
           <span className="hero-label">fresco<br />y rico</span>
         </div>
       </section>
