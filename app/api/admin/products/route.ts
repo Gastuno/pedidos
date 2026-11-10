@@ -164,3 +164,29 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "No pudimos guardar el producto. Probá de nuevo." }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  const authorization = await authorizeAdmin(request);
+  if ("response" in authorization) return authorization.response;
+
+  const body: unknown = await request.json().catch(() => null);
+  if (!isRecord(body) || typeof body.id !== "string" || !body.id) {
+    return NextResponse.json({ error: "No encontramos ese producto." }, { status: 400 });
+  }
+
+  try {
+    await prisma.product.delete({ where: { id: body.id } });
+    return NextResponse.json({ id: body.id });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2025"
+    ) {
+      return NextResponse.json({ error: "No encontramos ese producto." }, { status: 404 });
+    }
+    console.error("No se pudo eliminar el producto.", error);
+    return NextResponse.json({ error: "No pudimos eliminar el producto. Probá de nuevo." }, { status: 500 });
+  }
+}

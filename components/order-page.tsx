@@ -69,6 +69,8 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [savingProduct, setSavingProduct] = useState(false);
   const [productError, setProductError] = useState("");
+  const [deletingProductId, setDeletingProductId] = useState("");
+  const [deleteProductError, setDeleteProductError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState("");
@@ -250,6 +252,62 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
     }
   }
 
+  async function deleteProduct(product: Product) {
+    if (deletingProductId) return;
+    if (!window.confirm(`¿Eliminar el producto "${product.name}"? Esta acción no se puede deshacer.`)) return;
+
+    setDeletingProductId(product.id);
+    setDeleteProductError("");
+
+    try {
+      const { data, error: sessionError } = await getSupabaseBrowserClient().auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!data.session) {
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        throw new Error("Iniciá sesión para administrar productos.");
+      }
+
+      const response = await fetch("/api/admin/products", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+        body: JSON.stringify({ id: product.id }),
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          typeof result === "object" &&
+          result !== null &&
+          "error" in result &&
+          typeof result.error === "string"
+            ? result.error
+            : "No pudimos eliminar el producto.";
+        throw new Error(message);
+      }
+
+      setMenuProducts((current) => current.filter((item) => item.id !== product.id));
+      setCart((current) => {
+        const next = { ...current };
+        delete next[product.id];
+        return next;
+      });
+      if (editingProduct?.id === product.id) {
+        setProductEditorOpen(false);
+        setEditingProduct(null);
+        setProductForm(emptyProductForm);
+      }
+    } catch (deleteError) {
+      setDeleteProductError(
+        deleteError instanceof Error ? deleteError.message : "No pudimos eliminar el producto.",
+      );
+    } finally {
+      setDeletingProductId("");
+    }
+  }
+
   async function placeOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -345,6 +403,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
 
           {isAdmin && (
             <div className="product-management">
+              {deleteProductError && <p className="form-error" role="alert">{deleteProductError}</p>}
               <button
                 className="admin-product-button"
                 onClick={() => openProductEditor()}
@@ -439,13 +498,23 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
                     </div>
                     {product.description && <p>{product.description}</p>}
                     {isAdmin && (
-                      <button
-                        className="edit-product-button"
-                        onClick={() => openProductEditor(product)}
-                        type="button"
-                      >
-                        Editar producto
-                      </button>
+                      <>
+                        <button
+                          className="edit-product-button"
+                          onClick={() => openProductEditor(product)}
+                          type="button"
+                        >
+                          Editar producto
+                        </button>
+                        <button
+                          className="delete-product-button"
+                          disabled={Boolean(deletingProductId)}
+                          onClick={() => void deleteProduct(product)}
+                          type="button"
+                        >
+                          {deletingProductId === product.id ? "Eliminando..." : "Eliminar producto"}
+                        </button>
+                      </>
                     )}
                     <button
                       className={`add-button${cart[product.id] ? " has-quantity" : ""}`}
