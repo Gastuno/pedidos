@@ -557,7 +557,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
                     <path d="M7 11h18l1.5 17h-21L7 11Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                     <path d="M12 12V8a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
-                  <p>Tu bolsa está esperando algo rico.</p>
+                  <p>Pedí tu comida en dos clics!</p>
                   <span>Sumá algo del menú para empezar.</span>
                 </div>
               ) : (
@@ -643,7 +643,7 @@ export default function OrderPage({ products, heroImageUrl }: Props) {
                     {submitting ? "Enviando pedido..." : "Confirmar pedido"}
                     {!submitting && <span aria-hidden="true">→</span>}
                   </button>
-                  <p className="secure-note"><span>✦</span> Tu pedido se confirma al enviarlo al local.</p>
+                  <p className="secure-note"> Tu pedido se confirma al enviarlo al local.</p>
                 </form>
               )}
             </>
