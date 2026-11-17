@@ -8,9 +8,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function ensureUserProfile(user: User) {
   const existingUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { phone: true, address: true },
+    select: { telefono: true, direccion: true },
   });
-  if (existingUser?.phone && existingUser.address) return existingUser;
+  if (existingUser?.telefono && existingUser.direccion) return existingUser;
 
   const metadata: unknown = user.user_metadata;
   const phone = isRecord(metadata) ? metadata.phone : null;
@@ -31,14 +31,14 @@ export async function ensureUserProfile(user: User) {
     create: {
       id: user.id,
       email: user.email,
-      phone: phone.trim(),
-      address: address.trim(),
+      telefono: phone.trim(),
+      direccion: address.trim(),
     },
     update: {
       id: user.id,
-      phone: phone.trim(),
-      address: address.trim(),
+      telefono: phone.trim(),
+      direccion: address.trim(),
     },
-    select: { phone: true, address: true },
+    select: { telefono: true, direccion: true },
   });
 }
