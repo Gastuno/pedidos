@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   try {
     const profile = await ensureUserProfile(auth.user);
-    if (!profile?.telefono || !profile.direccion) {
+    if (!profile?.phone || !profile.address) {
       return NextResponse.json(
         { error: "La cuenta no tiene un teléfono y una dirección válidos." },
         { status: 400 },

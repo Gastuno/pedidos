@@ -9,13 +9,13 @@ datasource db {
 model User {
   id                  String       @id @default(uuid())
   email               String       @unique
-  telefono            String?
-  direccion           String?
+  phone               String?      @map("telefono")
+  address             String?      @map("direccion")
   nombre              String?
   apellido            String?
   puntos              Int          @default(0)
   role                Rol          @default(USER)
-  creadoEn            DateTime     @default(now())
+  fechaCreacion       DateTime     @default(now()) @map("creadoEn")
   direcciones         DirUsuario[]
   pedidos             Pedido[]
 }

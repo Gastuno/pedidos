@@ -88,7 +88,7 @@ export async function POST(request: Request) {
 
   try {
     const profile = await ensureUserProfile(auth.user);
-    if (!profile?.telefono || !profile.direccion) {
+    if (!profile?.phone || !profile.address) {
       return NextResponse.json(
         { error: "No encontramos tus datos de contacto. Volvé a iniciar sesión." },
         { status: 409 },
@@ -122,9 +122,9 @@ export async function POST(request: Request) {
 
       const details = {
         cliente: body.customerName.trim(),
-        telefono: profile.telefono,
+        telefono: profile.phone,
         modalidad: body.fulfillment,
-        direccion: body.fulfillment === "DELIVERY" ? profile.direccion : null,
+        direccion: body.fulfillment === "DELIVERY" ? profile.address : null,
         notas: body.notes?.trim() || null,
         items: orderItems,
         total,
