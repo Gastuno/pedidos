@@ -9,18 +9,15 @@ datasource db {
 model User {
   id                  String       @id @default(uuid())
   email               String       @unique
-  name                String?
-  phone               String?
-  address             String?
-  dni                 String?      @unique
+  phone               String?      @map("telefono")
+  address             String?      @map("direccion")
   nombre              String?
   apellido            String?
   puntos              Int          @default(0)
-  role                Role         @default(USER)
-  fechaCreacion       DateTime     @default(now()) @map("createdAt")
+  role                Rol          @default(USER)
+  fechaCreacion       DateTime     @default(now()) @map("creadoEn")
   direcciones         DirUsuario[]
   pedidos             Pedido[]
-  mediosPagoGuardados MpCliente[]
 }
 
 model Product {
@@ -31,10 +28,8 @@ model Product {
   stock       Int              @default(0)
   imageUrl    String?
   estado      String           @default("ACTIVO")
-  isCombo     Boolean          @default(false)
   createdAt   DateTime         @default(now())
   pedidos     DetallePedido[]
-  locales     ListaProductos[]
   categorias  Categoria[]
 }
 
@@ -51,12 +46,8 @@ model Pedido {
   notas            String?
   idUsuario        String?
   idEstado         Int?
-  idMP             Int?
-  idNegocio        Int?
   usuario          User?           @relation(fields: [idUsuario], references: [id], onDelete: SetNull)
   estado           Estado?         @relation(fields: [idEstado], references: [id], onDelete: SetNull)
-  medioPago        MedioPago?      @relation(fields: [idMP], references: [id], onDelete: SetNull)
-  local            Local?          @relation(fields: [idNegocio], references: [id], onDelete: SetNull)
   detalles         DetallePedido[]
   pagos            Pago[]
 }
@@ -100,7 +91,6 @@ model Direccion {
   idCalle  Int
   calle    Calle        @relation(fields: [idCalle], references: [id], onDelete: Restrict)
   usuarios DirUsuario[]
-  locales  Local[]
 }
 
 model DirUsuario {
@@ -113,50 +103,12 @@ model DirUsuario {
   @@unique([idUsuario, idDireccion])
 }
 
-model Local {
-  id          Int              @id @default(autoincrement())
-  idDireccion Int
-  direccion   Direccion        @relation(fields: [idDireccion], references: [id], onDelete: Restrict)
-  pedidos     Pedido[]
-  productos   ListaProductos[]
-}
-
-model ListaProductos {
-  id         Int     @id @default(autoincrement())
-  idProducto String
-  idLocal    Int
-  producto   Product @relation(fields: [idProducto], references: [id], onDelete: Cascade)
-  local      Local   @relation(fields: [idLocal], references: [id], onDelete: Cascade)
-
-  @@unique([idProducto, idLocal])
-}
-
-model MedioPago {
-  id       Int         @id @default(autoincrement())
-  nombre   String      @unique
-  pedidos  Pedido[]
-  pagos    Pago[]
-  usuarios MpCliente[]
-}
-
-model MpCliente {
-  id        Int       @id @default(autoincrement())
-  idUsuario String
-  idMP      Int
-  usuario   User      @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
-  medioPago MedioPago @relation(fields: [idMP], references: [id], onDelete: Cascade)
-
-  @@unique([idUsuario, idMP])
-}
-
 model Pago {
   id        Int       @id @default(autoincrement())
   idPedido  Int
-  idMP      Int
   fecha     DateTime  @default(now()) @db.Timestamp(3)
   hora      DateTime? @db.Time(0)
   pedido    Pedido    @relation(fields: [idPedido], references: [id], onDelete: Cascade)
-  medioPago MedioPago @relation(fields: [idMP], references: [id], onDelete: Restrict)
 }
 
 model Categoria {
@@ -174,7 +126,7 @@ model Variante {
   categorias Categoria[]
 }
 
-enum Role {
+enum Rol {
   USER
   ADMIN
 }
