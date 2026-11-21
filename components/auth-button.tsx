@@ -12,6 +12,13 @@ type Props = {
 };
 type AuthMode = "sign-in" | "sign-up";
 
+const profileFieldLabels = {
+  nombre: "nombre",
+  apellido: "apellido",
+  phone: "teléfono",
+  address: "dirección",
+} as const;
+
 async function syncProfile(accessToken: string) {
   const response = await fetch("/api/profile", {
     method: "POST",
@@ -29,6 +36,27 @@ async function syncProfile(accessToken: string) {
         : "No se pudieron guardar los datos de tu cuenta.";
     throw new Error(message);
   }
+
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("missingFields" in result) ||
+    !Array.isArray(result.missingFields) ||
+    !result.missingFields.every(
+      (field): field is keyof typeof profileFieldLabels =>
+        typeof field === "string" &&
+        Object.prototype.hasOwnProperty.call(profileFieldLabels, field),
+    )
+  ) {
+    throw new Error("No se pudieron verificar los datos de tu cuenta.");
+  }
+
+  if (result.missingFields.length > 0) {
+    const missingLabels = result.missingFields.map((field) => profileFieldLabels[field]);
+    return `Iniciaste sesión, pero tu perfil tiene datos faltantes o inválidos: ${missingLabels.join(", ")}. Podés continuar usando tu cuenta.`;
+  }
+
+  return "";
 }
 
 export default function AuthButton({
@@ -47,6 +75,7 @@ export default function AuthButton({
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loginNotice, setLoginNotice] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -99,13 +128,19 @@ export default function AuthButton({
         password,
       });
 
-      if (signInError) {
-        setError(signInError.message);
+      if (!data.session) {
+        setError(signInError?.message ?? "No se pudo iniciar sesión. Probá de nuevo.");
         return;
       }
 
-      if (data.session) await syncProfile(data.session.access_token);
+      let notice = "";
+      try {
+        notice = await syncProfile(data.session.access_token);
+      } catch {
+        notice = "Iniciaste sesión, pero no se pudieron verificar los datos de tu perfil. Intentá nuevamente más tarde.";
+      }
       setPassword("");
+      setLoginNotice(notice);
       setModalOpen(false);
     } catch (signInError) {
       setError(signInError instanceof Error ? signInError.message : "No se pudo iniciar sesión.");
@@ -140,7 +175,13 @@ export default function AuthButton({
 
       setPassword("");
       if (data.session) {
-        await syncProfile(data.session.access_token);
+        let notice = "";
+        try {
+          notice = await syncProfile(data.session.access_token);
+        } catch {
+          notice = "Creaste tu cuenta, pero no se pudieron verificar los datos de tu perfil. Intentá nuevamente más tarde.";
+        }
+        setLoginNotice(notice);
         setModalOpen(false);
       }
     } catch (signUpError) {
@@ -153,6 +194,7 @@ export default function AuthButton({
   function openModal(nextMode: AuthMode) {
     setMode(nextMode);
     setError("");
+    setLoginNotice("");
     setModalOpen(true);
   }
 
@@ -160,6 +202,7 @@ export default function AuthButton({
     try {
       const { error: signOutError } = await getSupabaseBrowserClient().auth.signOut();
       if (signOutError) throw signOutError;
+      setLoginNotice("");
       onSignedOut?.();
     } catch (signOutError) {
       setError(signOutError instanceof Error ? signOutError.message : "No se pudo cerrar sesión.");
@@ -183,6 +226,19 @@ export default function AuthButton({
       >
         {user ? "Cerrar sesión" : "Inicio de sesión"}
       </button>
+
+      {loginNotice && (
+        <p className="auth-notice" role="status">
+          {loginNotice}
+          <button
+            aria-label="Cerrar aviso"
+            onClick={() => setLoginNotice("")}
+            type="button"
+          >
+            ×
+          </button>
+        </p>
+      )}
 
       {modalOpen && (
         <div

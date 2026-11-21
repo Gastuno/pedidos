@@ -3,6 +3,32 @@ import { prisma } from "../../../lib/prisma";
 import { getAuthenticatedSupabaseUser } from "../../../lib/supabase-server";
 import { ensureUserProfile } from "../../../lib/user-profile";
 
+function getMissingProfileFields(
+  profile: {
+    nombre?: string | null;
+    apellido?: string | null;
+    phone?: string | null;
+    address?: string | null;
+  } | null,
+) {
+  const missingFields: string[] = [];
+
+  if (typeof profile?.nombre !== "string" || profile.nombre.trim().length < 2 || profile.nombre.trim().length > 100) {
+    missingFields.push("nombre");
+  }
+  if (typeof profile?.apellido !== "string" || profile.apellido.trim().length < 2 || profile.apellido.trim().length > 100) {
+    missingFields.push("apellido");
+  }
+  if (typeof profile?.phone !== "string" || !/^[+0-9()\s.-]{6,24}$/.test(profile.phone.trim())) {
+    missingFields.push("phone");
+  }
+  if (typeof profile?.address !== "string" || profile.address.trim().length < 5 || profile.address.trim().length > 200) {
+    missingFields.push("address");
+  }
+
+  return missingFields;
+}
+
 export async function GET(request: Request) {
   let auth: Awaited<ReturnType<typeof getAuthenticatedSupabaseUser>>;
   try {
@@ -80,14 +106,11 @@ export async function POST(request: Request) {
 
   try {
     const profile = await ensureUserProfile(auth.user);
-    if (!profile?.nombre || !profile.apellido || !profile.phone || !profile.address) {
-      return NextResponse.json(
-        { error: "La cuenta no tiene nombre, apellido, teléfono y dirección válidos." },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json({ success: true });
+    const missingFields = getMissingProfileFields(profile);
+    return NextResponse.json({
+      success: missingFields.length === 0,
+      missingFields,
+    });
   } catch (error) {
     console.error("No se pudieron guardar los datos de la cuenta.", error);
     const code =

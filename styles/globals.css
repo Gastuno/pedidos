@@ -56,6 +56,8 @@ button { color: inherit; }
 .auth-form { display: grid; gap: 16px; }
 .auth-switch { margin: 19px 0 0; color: var(--muted); text-align: center; font-size: 11px; }
 .auth-switch button { padding: 0; border: 0; background: transparent; color: var(--orange-dark); cursor: pointer; font-size: inherit; font-weight: 700; }
+.auth-notice { position: fixed; z-index: 9; top: 88px; right: 24px; display: flex; align-items: flex-start; gap: 12px; width: min(360px, calc(100vw - 32px)); margin: 0; padding: 12px; border: 1px solid #e8d6a5; border-radius: 5px; background: #fff8e6; color: #70551b; box-shadow: 0 8px 24px #17130f18; font-size: 12px; line-height: 1.5; }
+.auth-notice button { flex: 0 0 auto; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; }
 
 .hero { position: relative; min-height: 390px; max-width: 1240px; margin: 0 auto; padding: 57px 76px 55px; overflow: hidden; border-radius: 10px; background: #f2e7d8; }
 .hero-copy { position: relative; z-index: 1; max-width: 540px; }
