@@ -9,10 +9,8 @@ datasource db {
 model User {
   id                  String       @id @default(uuid())
   email               String       @unique
-  name                String?
   phone               String?
   address             String?
-  dni                 String?      @unique
   nombre              String?
   apellido            String?
   puntos              Int          @default(0)

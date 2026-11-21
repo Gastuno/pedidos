@@ -41,6 +41,8 @@ export default function AuthButton({
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +125,8 @@ export default function AuthButton({
         password,
         options: {
           data: {
+            nombre: nombre.trim(),
+            apellido: apellido.trim(),
             phone: phone.trim(),
             address: address.trim(),
           },
@@ -233,6 +237,30 @@ export default function AuthButton({
               </label>
               {mode === "sign-up" && (
                 <>
+                  <label className="field-label">
+                    Nombre
+                    <input
+                      autoComplete="given-name"
+                      maxLength={100}
+                      minLength={2}
+                      onChange={(event) => setNombre(event.target.value)}
+                      placeholder="Tu nombre"
+                      required
+                      value={nombre}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Apellido
+                    <input
+                      autoComplete="family-name"
+                      maxLength={100}
+                      minLength={2}
+                      onChange={(event) => setApellido(event.target.value)}
+                      placeholder="Tu apellido"
+                      required
+                      value={apellido}
+                    />
+                  </label>
                   <label className="field-label">
                     Teléfono
                     <input
