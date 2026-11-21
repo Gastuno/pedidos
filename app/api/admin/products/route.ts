@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
-import { getAuthenticatedSupabaseUser } from "../../../../lib/supabase-server";
+import { authorizeAdmin } from "../../../../lib/admin-auth";
 
 type ProductInput = {
   name: string;
@@ -43,62 +43,6 @@ function isProductInput(value: unknown): value is ProductInput {
   return true;
 }
 
-async function authorizeAdmin(request: Request) {
-  let auth: Awaited<ReturnType<typeof getAuthenticatedSupabaseUser>>;
-  try {
-    auth = await getAuthenticatedSupabaseUser(request);
-  } catch (error) {
-    console.error("No se pudo validar la sesión para administrar productos.", error);
-    return {
-      response: NextResponse.json(
-        { error: "No pudimos validar tu sesión. Probá de nuevo." },
-        { status: 503 },
-      ),
-    };
-  }
-
-  if (auth.error) {
-    if (auth.status === 400 || auth.status === 401 || auth.status === 403) {
-      return {
-        response: NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 }),
-      };
-    }
-    console.error("No se pudo validar la sesión para administrar productos.", auth.error);
-    return {
-      response: NextResponse.json(
-        { error: "No pudimos validar tu sesión. Probá de nuevo." },
-        { status: 503 },
-      ),
-    };
-  }
-  if (!auth.user) {
-    return {
-      response: NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 }),
-    };
-  }
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: auth.user.id },
-      select: { role: true },
-    });
-    if (user?.role !== "ADMIN") {
-      return {
-        response: NextResponse.json({ error: "No tenés permisos para administrar productos." }, { status: 403 }),
-      };
-    }
-    return { userId: auth.user.id };
-  } catch (error) {
-    console.error("No se pudo verificar el rol para administrar productos.", error);
-    return {
-      response: NextResponse.json(
-        { error: "No pudimos verificar tus permisos. Probá de nuevo." },
-        { status: 500 },
-      ),
-    };
-  }
-}
-
 function productData(input: ProductInput) {
   return {
     name: input.name.trim(),
@@ -109,13 +53,13 @@ function productData(input: ProductInput) {
 }
 
 export async function GET(request: Request) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, "administrar productos");
   if ("response" in authorization) return authorization.response;
   return NextResponse.json({ isAdmin: true });
 }
 
 export async function POST(request: Request) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, "administrar productos");
   if ("response" in authorization) return authorization.response;
 
   const body: unknown = await request.json().catch(() => null);
@@ -133,7 +77,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, "administrar productos");
   if ("response" in authorization) return authorization.response;
 
   const body: unknown = await request.json().catch(() => null);
@@ -166,7 +110,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, "administrar productos");
   if ("response" in authorization) return authorization.response;
 
   const body: unknown = await request.json().catch(() => null);

@@ -45,7 +45,6 @@ export default function AuthButton({
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -117,7 +116,6 @@ export default function AuthButton({
     event.preventDefault();
     setSubmitting(true);
     setError("");
-    setSuccess("");
 
     try {
       const { data, error: signUpError } = await getSupabaseBrowserClient().auth.signUp({
@@ -140,8 +138,6 @@ export default function AuthButton({
       if (data.session) {
         await syncProfile(data.session.access_token);
         setModalOpen(false);
-      } else {
-        setSuccess("Revisá tu correo para confirmar la creación de tu cuenta.");
       }
     } catch (signUpError) {
       setError(signUpError instanceof Error ? signUpError.message : "No se pudo crear la cuenta.");
@@ -153,7 +149,6 @@ export default function AuthButton({
   function openModal(nextMode: AuthMode) {
     setMode(nextMode);
     setError("");
-    setSuccess("");
     setModalOpen(true);
   }
 
@@ -266,7 +261,6 @@ export default function AuthButton({
                 </>
               )}
               {error && <p className="form-error" role="alert">{error}</p>}
-              {success && <p className="auth-success" role="status">{success}</p>}
               <button className="submit-order" disabled={submitting} type="submit">
                 {submitting
                   ? mode === "sign-in" ? "Ingresando..." : "Creando cuenta..."
