@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
-type Props = { cartButton?: ReactNode; adminLink?: boolean };
+type Props = {
+  cartButton?: ReactNode;
+  adminLink?: boolean;
+  onSignedOut?: () => void;
+};
 type AuthMode = "sign-in" | "sign-up";
 
 async function syncProfile(accessToken: string) {
@@ -27,7 +31,11 @@ async function syncProfile(accessToken: string) {
   }
 }
 
-export default function AuthButton({ cartButton, adminLink = false }: Props) {
+export default function AuthButton({
+  cartButton,
+  adminLink = false,
+  onSignedOut,
+}: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>("sign-in");
@@ -153,6 +161,7 @@ export default function AuthButton({ cartButton, adminLink = false }: Props) {
     try {
       const { error: signOutError } = await getSupabaseBrowserClient().auth.signOut();
       if (signOutError) throw signOutError;
+      onSignedOut?.();
     } catch (signOutError) {
       setError(signOutError instanceof Error ? signOutError.message : "No se pudo cerrar sesión.");
       setModalOpen(true);

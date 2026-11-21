@@ -364,7 +364,7 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
           </a>
           <div className="topbar-actions">
             <a className="admin-nav-link" href="/">Volver a la tienda</a>
-            <AuthButton />
+            <AuthButton onSignedOut={() => window.location.assign("/")} />
           </div>
         </header>
 
