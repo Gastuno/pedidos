@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
-type Props = { cartButton: ReactNode };
+type Props = { cartButton?: ReactNode; adminLink?: boolean };
 type AuthMode = "sign-in" | "sign-up";
 
 async function syncProfile(accessToken: string) {
@@ -27,7 +27,7 @@ async function syncProfile(accessToken: string) {
   }
 }
 
-export default function AuthButton({ cartButton }: Props) {
+export default function AuthButton({ cartButton, adminLink = false }: Props) {
   const [user, setUser] = useState<User | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>("sign-in");
@@ -162,6 +162,11 @@ export default function AuthButton({ cartButton }: Props) {
   return (
     <div className="topbar-actions">
       {cartButton}
+      {adminLink && (
+        <a className="admin-nav-link" href="/admin">
+          Administración
+        </a>
+      )}
       <button
         className="auth-trigger"
         onClick={() => (user ? signOut() : openModal("sign-in"))}

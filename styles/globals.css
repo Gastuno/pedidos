@@ -42,6 +42,8 @@ button { color: inherit; }
 .auth-trigger { padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); cursor: pointer; font-size: 12px; transition: border-color .2s, color .2s; }
 .auth-trigger:hover { border-color: var(--orange); color: var(--orange-dark); }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
+.admin-nav-link { padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); font-size: 12px; }
+.admin-nav-link:hover { border-color: var(--orange); color: var(--orange-dark); }
 .top-cart { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: white; font-size: 12px; }
 .shopping-bag-icon { width: 17px; height: 17px; color: var(--ink); }
 .top-cart-count { min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--orange); color: white; font-weight: 700; }
@@ -112,6 +114,12 @@ button { color: inherit; }
 .product-cancel-button { padding: 9px 12px; border: 1px solid var(--line); border-radius: 4px; background: white; cursor: pointer; font-size: 11px; }
 .product-cancel-button:disabled { cursor: not-allowed; opacity: .6; }
 .admin-error { margin: 16px 0; }
+.admin-page { max-width: 1156px; min-height: calc(100vh - 76px); margin: 45px auto 80px; }
+.admin-page-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 25px; }
+.admin-page-heading h1 { margin: 10px 0 6px; font-family: Georgia, "Times New Roman", serif; font-size: 36px; font-weight: 500; letter-spacing: -.8px; }
+.admin-page-heading p, .admin-access-message { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.admin-access-message { padding: 20px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+.admin-page .product-management { margin: 0 0 22px; }
 .add-button { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 4px; background: white; cursor: pointer; font-size: 10px; font-weight: 650; transition: all .2s; }
 .add-button:hover, .add-button.has-quantity { border-color: var(--orange); color: var(--orange-dark); }
 .empty-menu { padding: 55px 20px; text-align: center; border: 1px dashed #ded8ce; border-radius: 8px; }
@@ -174,6 +182,7 @@ button { color: inherit; }
 @media (max-width: 1240px) {
   .hero { margin: 0 24px; }
   .menu-layout { margin-right: 42px; margin-left: 42px; }
+  .admin-page { margin-right: 42px; margin-left: 42px; }
   .site-footer { margin: 0 24px; }
 }
 @media (max-width: 900px) {
@@ -197,6 +206,8 @@ button { color: inherit; }
   .hero-art { top: 176px; right: -25px; transform: scale(.65); transform-origin: top right; }
   .hero-bottom { right: 20px; bottom: 17px; left: 20px; }
   .menu-layout { display: flex; flex-direction: column; gap: 35px; margin: 54px 17px 60px; }
+  .admin-page { margin: 35px 17px 60px; }
+  .admin-page-heading h1 { font-size: 30px; }
   .menu-main, .order-panel { width: 100%; }
   .section-heading h2 { font-size: 27px; }
   .product-grid { gap: 11px; }
@@ -215,7 +226,7 @@ button { color: inherit; }
 @media (max-width: 340px) {
   .topbar { padding: 0 12px; }
   .topbar-note { display: none; }
-  .auth-trigger, .top-cart { padding: 7px 8px; }
+  .auth-trigger, .top-cart, .admin-nav-link { padding: 7px 8px; }
   .brand { gap: 6px; font-size: 18px; }
   .brand-mark { width: 24px; height: 24px; font-size: 17px; }
   .auth-trigger { padding: 6px; font-size: 9px; }
