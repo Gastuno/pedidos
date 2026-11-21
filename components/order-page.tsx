@@ -525,6 +525,7 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
             <span>pedivos<span className="brand-period">.</span></span>
           </a>
           <div className="topbar-actions">
+            <a className="admin-nav-link" href="/admin/orders">Ver pedidos</a>
             <a className="admin-nav-link" href="/">Volver a la tienda</a>
             <AuthButton onSignedOut={() => window.location.assign("/")} />
           </div>
