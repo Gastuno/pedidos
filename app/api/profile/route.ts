@@ -1,6 +1,56 @@
 import { NextResponse } from "next/server";
+import { prisma } from "../../../lib/prisma";
 import { getAuthenticatedSupabaseUser } from "../../../lib/supabase-server";
 import { ensureUserProfile } from "../../../lib/user-profile";
+
+export async function GET(request: Request) {
+  let auth: Awaited<ReturnType<typeof getAuthenticatedSupabaseUser>>;
+  try {
+    auth = await getAuthenticatedSupabaseUser(request);
+  } catch (error) {
+    console.error("No se pudo validar la sesión para consultar los puntos.", error);
+    return NextResponse.json(
+      { error: "No pudimos validar tu sesión. Probá de nuevo." },
+      { status: 503 },
+    );
+  }
+
+  if (auth.error) {
+    if (auth.status === 400 || auth.status === 401 || auth.status === 403) {
+      return NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 });
+    }
+    console.error("No se pudo validar la sesión para consultar los puntos.", auth.error);
+    return NextResponse.json(
+      { error: "No pudimos validar tu sesión. Probá de nuevo." },
+      { status: 503 },
+    );
+  }
+  if (!auth.user) {
+    return NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 });
+  }
+
+  try {
+    await ensureUserProfile(auth.user);
+    const user = await prisma.user.findUnique({
+      where: { id: auth.user.id },
+      select: { puntos: true },
+    });
+    if (!user) {
+      return NextResponse.json(
+        { error: "No encontramos los puntos de tu cuenta." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ puntos: user.puntos });
+  } catch (error) {
+    console.error("No se pudieron consultar los puntos de la cuenta.", error);
+    return NextResponse.json(
+      { error: "No pudimos consultar tus puntos. Probá de nuevo." },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(request: Request) {
   let auth: Awaited<ReturnType<typeof getAuthenticatedSupabaseUser>>;

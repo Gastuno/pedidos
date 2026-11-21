@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import AuthButton from "./auth-button";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
+import { puntosRequeridosPorMonto } from "../lib/order-request";
 
 type Product = {
   id: string;
@@ -21,6 +22,15 @@ type ProductForm = {
 
 type Props = { products: Product[]; heroImageUrl: string | null; adminMode?: boolean };
 type Fulfillment = "PICKUP" | "DELIVERY";
+type PaymentMethod = "MP" | "POINTS";
+type CheckoutDraft = {
+  customerName: string;
+  fulfillment: Fulfillment;
+  notes: string;
+  items: { productId: string; quantity: number }[];
+  idempotencyKey: string;
+  expectedTotal: number;
+};
 
 const emptyProductForm: ProductForm = {
   name: "",
@@ -44,6 +54,10 @@ function isProduct(value: unknown): value is Product {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isPaymentMethod(value: unknown): value is PaymentMethod {
+  return value === "MP" || value === "POINTS";
 }
 
 const money = new Intl.NumberFormat("es-AR", {
@@ -74,11 +88,61 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [orderId, setOrderId] = useState("");
+  const [checkoutReady, setCheckoutReady] = useState(false);
+  const [checkoutDraft, setCheckoutDraft] = useState<CheckoutDraft | null>(null);
+  const [orderTotal, setOrderTotal] = useState(0);
+  const [orderPoints, setOrderPoints] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+  const [pointsError, setPointsError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MP");
+  const [orderPaymentMethod, setOrderPaymentMethod] = useState<PaymentMethod>("MP");
+  const [pointsRedeemed, setPointsRedeemed] = useState(0);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
     let adminCheckId = 0;
+    let pointsCheckId = 0;
     let unsubscribe = () => {};
+
+    async function loadPoints(accessToken: string | null) {
+      const currentCheckId = ++pointsCheckId;
+      setPointsError("");
+      if (!accessToken) {
+        setPointsBalance(null);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const result: unknown = await response.json().catch(() => null);
+        if (!active || currentCheckId !== pointsCheckId) return;
+        if (
+          !response.ok ||
+          !isRecord(result) ||
+          typeof result.puntos !== "number" ||
+          !Number.isInteger(result.puntos) ||
+          result.puntos < 0
+        ) {
+          const message =
+            isRecord(result) && typeof result.error === "string"
+              ? result.error
+              : "No se pudo consultar tu saldo de puntos.";
+          throw new Error(message);
+        }
+        setPointsBalance(result.puntos);
+      } catch (pointsLoadError) {
+        if (!active || currentCheckId !== pointsCheckId) return;
+        setPointsBalance(null);
+        setPointsError(
+          pointsLoadError instanceof Error
+            ? pointsLoadError.message
+            : "No se pudo consultar tu saldo de puntos.",
+        );
+      }
+    }
 
     async function checkAdmin(accessToken: string | null) {
       const currentCheckId = ++adminCheckId;
@@ -127,6 +191,7 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
         if (sessionError) setError(sessionError.message);
         setIsAuthenticated(Boolean(data.session));
         void checkAdmin(data.session?.access_token ?? null);
+        void loadPoints(data.session?.access_token ?? null);
         setAuthLoading(false);
       }).catch((sessionError: unknown) => {
         if (!active) return;
@@ -137,6 +202,7 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         setIsAuthenticated(Boolean(session));
         void checkAdmin(session?.access_token ?? null);
+        void loadPoints(session?.access_token ?? null);
         setAuthLoading(false);
       });
       unsubscribe = () => data.subscription.unsubscribe();
@@ -157,6 +223,9 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
     (sum, product) => sum + product.price * cart[product.id],
     0,
   );
+  const puntosRequeridos = puntosRequeridosPorMonto(orderTotal);
+  const puedePagarConPuntos =
+    puntosRequeridos > 0 && pointsBalance !== null && pointsBalance >= puntosRequeridos;
 
   useEffect(() => {
     if (productEditorOpen && productEditorScrollRequest > 0) {
@@ -322,35 +391,128 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
         return;
       }
 
+      const checkout = {
+        customerName,
+        fulfillment,
+        notes,
+        items: cartItems.map((product) => ({
+          productId: product.id,
+          quantity: cart[product.id],
+        })),
+      };
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${data.session.access_token}`,
         },
-        body: JSON.stringify({
-          customerName,
-          fulfillment,
-          notes,
-          items: cartItems.map((product) => ({
-            productId: product.id,
-            quantity: cart[product.id],
-          })),
-        }),
+        body: JSON.stringify(checkout),
       });
-      const result = await response.json();
+      const result: unknown = await response.json().catch(() => null);
 
       if (!response.ok) {
-        setError(result.error ?? "No pudimos enviar tu pedido.");
+        setError(
+          isRecord(result) && typeof result.error === "string"
+            ? result.error
+            : "No pudimos calcular el pedido.",
+        );
         return;
       }
 
-      setOrderId(String(result.id));
-      setCart({});
+      if (
+        !isRecord(result) ||
+        typeof result.total !== "number" ||
+        typeof result.puntosAdquiridos !== "number"
+      ) {
+        throw new Error("La respuesta del pedido no es válida.");
+      }
+
+      setOrderTotal(result.total);
+      setOrderPoints(result.puntosAdquiridos);
+      setCheckoutDraft({
+        ...checkout,
+        idempotencyKey: crypto.randomUUID(),
+        expectedTotal: result.total,
+      });
+      setCheckoutReady(true);
     } catch {
       setError("No pudimos conectar con el local. Revisá tu conexión e intentá de nuevo.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function payOrder() {
+    if (!checkoutDraft || paymentSubmitting) return;
+    setPaymentSubmitting(true);
+    setError("");
+
+    try {
+      const { data, error: sessionError } = await getSupabaseBrowserClient().auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!data.session) {
+        setIsAuthenticated(false);
+        throw new Error("Iniciá sesión para continuar con el pago.");
+      }
+
+      const response = await fetch("/api/orders/payment", {
+        method: "POST",
+        body: JSON.stringify({ ...checkoutDraft, paymentMethod }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          isRecord(result) && typeof result.error === "string"
+            ? result.error
+            : "No pudimos procesar el pago.";
+        if (
+          isRecord(result) &&
+          result.code === "INSUFFICIENT_POINTS" &&
+          typeof result.puntosDisponibles === "number"
+        ) {
+          setPointsBalance(result.puntosDisponibles);
+          setPaymentMethod("MP");
+        } else if (response.status === 409) {
+          setCheckoutReady(false);
+          setCheckoutDraft(null);
+        }
+        throw new Error(message);
+      }
+
+      if (
+        !isRecord(result) ||
+        (typeof result.id !== "number" && typeof result.id !== "string") ||
+        typeof result.total !== "number" ||
+        typeof result.puntosAdquiridos !== "number" ||
+        !isPaymentMethod(result.paymentMethod) ||
+        typeof result.puntosUsados !== "number" ||
+        !Number.isInteger(result.puntosUsados) ||
+        typeof result.puntosRestantes !== "number" ||
+        !Number.isInteger(result.puntosRestantes)
+      ) {
+        throw new Error("La respuesta del pago no es válida.");
+      }
+      setOrderId(String(result.id));
+      setOrderTotal(result.total);
+      setOrderPoints(result.puntosAdquiridos);
+      setOrderPaymentMethod(result.paymentMethod);
+      setPointsRedeemed(result.puntosUsados);
+      setPointsBalance(result.puntosRestantes);
+      setCheckoutReady(false);
+      setCheckoutDraft(null);
+      setCart({});
+    } catch (paymentError) {
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "No pudimos procesar el pago. Probá de nuevo.",
+      );
+    } finally {
+      setPaymentSubmitting(false);
     }
   }
 
@@ -520,13 +682,28 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
         <AuthButton
           adminLink={isAdmin}
           cartButton={
-            <a className="top-cart" href="#tu-pedido" aria-label={`Ver pedido, ${itemCount} productos`}>
-              <svg className="shopping-bag-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                <path d="M5 8h14l1 13H4L5 8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                <path d="M9 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-              <span className="top-cart-count">{itemCount}</span>
-            </a>
+            <>
+              {isAuthenticated && (
+                <span
+                  className="top-points-counter"
+                  aria-label={
+                    pointsBalance === null
+                      ? "Saldo de puntos no disponible"
+                      : `${pointsBalance} puntos disponibles`
+                  }
+                  title={pointsError || "Puntos disponibles"}
+                >
+                  Puntos {pointsBalance === null ? "—" : pointsBalance.toLocaleString("es-AR")}
+                </span>
+              )}
+              <a className="top-cart" href="#tu-pedido" aria-label={`Ver pedido, ${itemCount} productos`}>
+                <svg className="shopping-bag-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 8h14l1 13H4L5 8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                  <path d="M9 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <span className="top-cart-count">{itemCount}</span>
+              </a>
+            </>
           }
         />
       </header>
@@ -580,6 +757,7 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
                     <button
                       className={`add-button${cart[product.id] ? " has-quantity" : ""}`}
                       onClick={() => changeQuantity(product.id, 1)}
+                      disabled={checkoutReady}
                       type="button"
                       aria-label={`Agregar ${product.name} al pedido`}
                     >
@@ -603,11 +781,85 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
           {orderId ? (
             <div className="success-panel" role="status">
               <span className="success-icon">✓</span>
-              <h3>¡Pedido recibido!</h3>
-              <p>Ya lo estamos preparando. Guardá el número para consultar en el local.</p>
+              <h3>¡Pago aprobado!</h3>
+              <p>
+                {orderPaymentMethod === "POINTS"
+                  ? `Tu pedido está confirmado. Usaste ${pointsRedeemed} puntos; no sumaste puntos con este pago.`
+                  : `Tu pedido ya está confirmado y sumaste ${orderPoints} puntos.`}
+              </p>
               <span className="order-number">N.º {orderId.slice(0, 8).toUpperCase()}</span>
-              <button className="text-button" onClick={() => setOrderId("")} type="button">
+              <button
+                className="text-button"
+                onClick={() => {
+                  setOrderId("");
+                  setError("");
+                }}
+                type="button"
+              >
                 Hacer otro pedido
+              </button>
+            </div>
+          ) : checkoutReady ? (
+            <div className="success-panel payment-panel">
+              <span className="payment-label">
+                {paymentMethod === "POINTS" ? "Canje de puntos" : "Mercado Pago"}
+              </span>
+              <h3>Tu pedido está listo para pagar</h3>
+              <p>
+                {paymentMethod === "POINTS"
+                  ? `Al confirmar, se descontarán ${puntosRequeridos.toLocaleString("es-AR")} puntos.`
+                  : "El pedido todavía no se guardó. No se realizará ningún cargo real."}
+              </p>
+              <div className="payment-summary">
+                <span>{paymentMethod === "POINTS" ? "Total del pedido" : "Total a pagar"}</span>
+                <strong>{money.format(orderTotal)}</strong>
+              </div>
+              <fieldset className="payment-options">
+                <legend>Forma de pago</legend>
+                <label className={`payment-option${paymentMethod === "MP" ? " selected" : ""}`}>
+                  <input
+                    checked={paymentMethod === "MP"}
+                    name="paymentMethod"
+                    onChange={() => setPaymentMethod("MP")}
+                    type="radio"
+                  />
+                  <span>
+                    <strong>Mercado Pago</strong>
+                    <small>Al pagar vas a sumar {orderPoints} puntos.</small>
+                  </span>
+                </label>
+                <label
+                  className={`payment-option${paymentMethod === "POINTS" ? " selected" : ""}${puedePagarConPuntos ? "" : " disabled"}`}
+                >
+                  <input
+                    checked={paymentMethod === "POINTS"}
+                    disabled={!puedePagarConPuntos}
+                    name="paymentMethod"
+                    onChange={() => setPaymentMethod("POINTS")}
+                    type="radio"
+                  />
+                  <span>
+                    <strong>Pagar con puntos</strong>
+                    <small>
+                      {pointsBalance === null
+                        ? pointsError || "Consultando saldo..."
+                        : `1 punto = $1 · saldo ${pointsBalance.toLocaleString("es-AR")} · necesitás ${puntosRequeridos.toLocaleString("es-AR")}`}
+                    </small>
+                  </span>
+                </label>
+              </fieldset>
+              {pointsError && <p className="form-error" role="alert">{pointsError}</p>}
+              {error && <p className="form-error" role="alert">{error}</p>}
+              <button
+                className="submit-order"
+                disabled={paymentSubmitting || (paymentMethod === "POINTS" && !puedePagarConPuntos)}
+                onClick={() => void payOrder()}
+                type="button"
+              >
+                {paymentSubmitting
+                  ? "Procesando pago..."
+                  : paymentMethod === "POINTS" ? "Confirmar con puntos" : "Simular pago"}
+                {!paymentSubmitting && <span aria-hidden="true">→</span>}
               </button>
             </div>
           ) : (
@@ -701,10 +953,10 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
                     <strong>{money.format(total)}</strong>
                   </div>
                   <button className="submit-order" disabled={itemCount === 0 || submitting} type="submit">
-                    {submitting ? "Enviando pedido..." : "Confirmar pedido"}
+                    {submitting ? "Calculando total..." : "Continuar al pago"}
                     {!submitting && <span aria-hidden="true">→</span>}
                   </button>
-                  <p className="secure-note"> Tu pedido se confirma al enviarlo al local.</p>
+                  <p className="secure-note">El pedido se guardará únicamente al confirmar el pago.</p>
                 </form>
               )}
             </>

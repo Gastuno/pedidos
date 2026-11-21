@@ -16,6 +16,7 @@ En `.env` configurá:
 
 ```bash
 npm install
+npm run db:migrate
 npm run db:generate
 npm run db:seed
 npm run dev
