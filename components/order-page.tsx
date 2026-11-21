@@ -516,6 +516,12 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
     }
   }
 
+  function goBackToCheckout() {
+    setCheckoutReady(false);
+    setCheckoutDraft(null);
+    setError("");
+  }
+
   if (adminMode) {
     return (
       <main>
@@ -802,13 +808,13 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
           ) : checkoutReady ? (
             <div className="success-panel payment-panel">
               <span className="payment-label">
-                {paymentMethod === "POINTS" ? "Canje de puntos" : "Mercado Pago"}
+                {paymentMethod === "POINTS" ? "Canje de puntos" : ""}
               </span>
               <h3>Tu pedido está listo para pagar</h3>
               <p>
                 {paymentMethod === "POINTS"
                   ? `Al confirmar, se descontarán ${puntosRequeridos.toLocaleString("es-AR")} puntos.`
-                  : "El pedido todavía no se guardó. No se realizará ningún cargo real."}
+                  : ""}
               </p>
               <div className="payment-summary">
                 <span>{paymentMethod === "POINTS" ? "Total del pedido" : "Total a pagar"}</span>
@@ -851,6 +857,15 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
               {pointsError && <p className="form-error" role="alert">{pointsError}</p>}
               {error && <p className="form-error" role="alert">{error}</p>}
               <button
+                className="payment-back-button"
+                disabled={paymentSubmitting}
+                onClick={goBackToCheckout}
+                type="button"
+              >
+                <span aria-hidden="true">←</span>
+                Volver al pedido
+              </button>
+              <button
                 className="submit-order"
                 disabled={paymentSubmitting || (paymentMethod === "POINTS" && !puedePagarConPuntos)}
                 onClick={() => void payOrder()}
@@ -858,7 +873,7 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
               >
                 {paymentSubmitting
                   ? "Procesando pago..."
-                  : paymentMethod === "POINTS" ? "Confirmar con puntos" : "Simular pago"}
+                  : paymentMethod === "POINTS" ? "Confirmar con puntos" : "Realizar pago"}
                 {!paymentSubmitting && <span aria-hidden="true">→</span>}
               </button>
             </div>

@@ -187,6 +187,9 @@ button { color: inherit; }
 .payment-label { color: var(--orange-dark); font-size: 10px; font-weight: 700; }
 .payment-summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 12px; }
 .payment-summary strong { font-size: 18px; }
+.payment-back-button { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); cursor: pointer; font-size: 11px; font-weight: 700; }
+.payment-back-button:hover:not(:disabled) { border-color: var(--orange); color: var(--orange-dark); }
+.payment-back-button:disabled { cursor: not-allowed; opacity: .48; }
 .text-button { margin-top: 18px; padding: 5px; border: 0; background: transparent; color: var(--orange-dark); cursor: pointer; font-size: 10px; font-weight: 700; }
 
 .site-footer { max-width: 1240px; margin: 0 auto; padding: 24px 42px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
