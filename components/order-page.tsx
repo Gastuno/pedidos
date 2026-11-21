@@ -678,8 +678,6 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
           <span className="brand-mark">P</span>
           <span>pedivos<span className="brand-period">.</span></span>
         </a>
-        <div className="topbar-note">
-        </div>
         <AuthButton
           adminLink={isAdmin}
           cartButton={
