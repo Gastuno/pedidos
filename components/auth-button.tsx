@@ -218,6 +218,11 @@ export default function AuthButton({
           Administración
         </a>
       )}
+      {user && (
+        <a className="admin-nav-link" href="/perfil">
+          Mi perfil
+        </a>
+      )}
       <button
         className="auth-trigger"
         onClick={() => (user ? signOut() : openModal("sign-in"))}

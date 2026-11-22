@@ -176,4 +176,6 @@ model Variante {
 enum Role {
   USER
   ADMIN
+
+  @@map("Rol")
 }
