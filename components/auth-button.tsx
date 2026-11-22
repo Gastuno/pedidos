@@ -8,9 +8,17 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 type Props = {
   cartButton?: ReactNode;
   adminLink?: boolean;
+  returnToStore?: boolean;
   onSignedOut?: () => void;
 };
 type AuthMode = "sign-in" | "sign-up";
+
+const profileFieldLabels = {
+  nombre: "nombre",
+  apellido: "apellido",
+  phone: "teléfono",
+  address: "dirección",
+} as const;
 
 async function syncProfile(accessToken: string) {
   const response = await fetch("/api/profile", {
@@ -29,11 +37,33 @@ async function syncProfile(accessToken: string) {
         : "No se pudieron guardar los datos de tu cuenta.";
     throw new Error(message);
   }
+
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("missingFields" in result) ||
+    !Array.isArray(result.missingFields) ||
+    !result.missingFields.every(
+      (field): field is keyof typeof profileFieldLabels =>
+        typeof field === "string" &&
+        Object.prototype.hasOwnProperty.call(profileFieldLabels, field),
+    )
+  ) {
+    throw new Error("No se pudieron verificar los datos de tu cuenta.");
+  }
+
+  if (result.missingFields.length > 0) {
+    const missingLabels = result.missingFields.map((field) => profileFieldLabels[field]);
+    return `Iniciaste sesión, pero tu perfil tiene datos faltantes o inválidos: ${missingLabels.join(", ")}. Podés continuar usando tu cuenta.`;
+  }
+
+  return "";
 }
 
 export default function AuthButton({
   cartButton,
   adminLink = false,
+  returnToStore = false,
   onSignedOut,
 }: Props) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,10 +71,13 @@ export default function AuthButton({
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loginNotice, setLoginNotice] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -97,13 +130,19 @@ export default function AuthButton({
         password,
       });
 
-      if (signInError) {
-        setError(signInError.message);
+      if (!data.session) {
+        setError(signInError?.message ?? "No se pudo iniciar sesión. Probá de nuevo.");
         return;
       }
 
-      if (data.session) await syncProfile(data.session.access_token);
+      let notice = "";
+      try {
+        notice = await syncProfile(data.session.access_token);
+      } catch {
+        notice = "Iniciaste sesión, pero no se pudieron verificar los datos de tu perfil. Intentá nuevamente más tarde.";
+      }
       setPassword("");
+      setLoginNotice(notice);
       setModalOpen(false);
     } catch (signInError) {
       setError(signInError instanceof Error ? signInError.message : "No se pudo iniciar sesión.");
@@ -123,6 +162,8 @@ export default function AuthButton({
         password,
         options: {
           data: {
+            nombre: nombre.trim(),
+            apellido: apellido.trim(),
             phone: phone.trim(),
             address: address.trim(),
           },
@@ -136,7 +177,13 @@ export default function AuthButton({
 
       setPassword("");
       if (data.session) {
-        await syncProfile(data.session.access_token);
+        let notice = "";
+        try {
+          notice = await syncProfile(data.session.access_token);
+        } catch {
+          notice = "Creaste tu cuenta, pero no se pudieron verificar los datos de tu perfil. Intentá nuevamente más tarde.";
+        }
+        setLoginNotice(notice);
         setModalOpen(false);
       }
     } catch (signUpError) {
@@ -149,6 +196,7 @@ export default function AuthButton({
   function openModal(nextMode: AuthMode) {
     setMode(nextMode);
     setError("");
+    setLoginNotice("");
     setModalOpen(true);
   }
 
@@ -156,6 +204,7 @@ export default function AuthButton({
     try {
       const { error: signOutError } = await getSupabaseBrowserClient().auth.signOut();
       if (signOutError) throw signOutError;
+      setLoginNotice("");
       onSignedOut?.();
     } catch (signOutError) {
       setError(signOutError instanceof Error ? signOutError.message : "No se pudo cerrar sesión.");
@@ -171,6 +220,11 @@ export default function AuthButton({
           Administración
         </a>
       )}
+      {user && (
+        <a className="admin-nav-link" href={returnToStore ? "/" : "/perfil"}>
+          {returnToStore ? "Volver a la tienda" : "Mi perfil"}
+        </a>
+      )}
       <button
         className="auth-trigger"
         onClick={() => (user ? signOut() : openModal("sign-in"))}
@@ -179,6 +233,19 @@ export default function AuthButton({
       >
         {user ? "Cerrar sesión" : "Inicio de sesión"}
       </button>
+
+      {loginNotice && (
+        <p className="auth-notice" role="status">
+          {loginNotice}
+          <button
+            aria-label="Cerrar aviso"
+            onClick={() => setLoginNotice("")}
+            type="button"
+          >
+            ×
+          </button>
+        </p>
+      )}
 
       {modalOpen && (
         <div
@@ -233,6 +300,30 @@ export default function AuthButton({
               </label>
               {mode === "sign-up" && (
                 <>
+                  <label className="field-label">
+                    Nombre
+                    <input
+                      autoComplete="given-name"
+                      maxLength={100}
+                      minLength={2}
+                      onChange={(event) => setNombre(event.target.value)}
+                      placeholder="Tu nombre"
+                      required
+                      value={nombre}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Apellido
+                    <input
+                      autoComplete="family-name"
+                      maxLength={100}
+                      minLength={2}
+                      onChange={(event) => setApellido(event.target.value)}
+                      placeholder="Tu apellido"
+                      required
+                      value={apellido}
+                    />
+                  </label>
                   <label className="field-label">
                     Teléfono
                     <input

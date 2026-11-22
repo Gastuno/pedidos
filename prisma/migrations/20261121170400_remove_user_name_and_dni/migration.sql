@@ -1,0 +1,5 @@
+DROP INDEX IF EXISTS "User_dni_key";
+
+ALTER TABLE "User"
+  DROP COLUMN IF EXISTS "name",
+  DROP COLUMN IF EXISTS "dni";

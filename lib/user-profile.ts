@@ -8,15 +8,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function ensureUserProfile(user: User) {
   const existingUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { phone: true, address: true },
+    select: { nombre: true, apellido: true, phone: true, address: true },
   });
-  if (existingUser?.phone && existingUser.address) return existingUser;
+  if (existingUser?.nombre && existingUser.apellido && existingUser.phone && existingUser.address) {
+    return existingUser;
+  }
 
   const metadata: unknown = user.user_metadata;
+  const nombre = isRecord(metadata) ? metadata.nombre : null;
+  const apellido = isRecord(metadata) ? metadata.apellido : null;
   const phone = isRecord(metadata) ? metadata.phone : null;
   const address = isRecord(metadata) ? metadata.address : null;
   if (
     typeof user.email !== "string" ||
+    typeof nombre !== "string" ||
+    nombre.trim().length < 2 ||
+    nombre.trim().length > 100 ||
+    typeof apellido !== "string" ||
+    apellido.trim().length < 2 ||
+    apellido.trim().length > 100 ||
     typeof phone !== "string" ||
     !/^[+0-9()\s.-]{6,24}$/.test(phone.trim()) ||
     typeof address !== "string" ||
@@ -31,14 +41,18 @@ export async function ensureUserProfile(user: User) {
     create: {
       id: user.id,
       email: user.email,
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
       phone: phone.trim(),
       address: address.trim(),
     },
     update: {
       id: user.id,
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
       phone: phone.trim(),
       address: address.trim(),
     },
-    select: { phone: true, address: true },
+    select: { nombre: true, apellido: true, phone: true, address: true },
   });
 }

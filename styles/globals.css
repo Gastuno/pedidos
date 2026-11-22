@@ -56,6 +56,21 @@ button { color: inherit; }
 .auth-form { display: grid; gap: 16px; }
 .auth-switch { margin: 19px 0 0; color: var(--muted); text-align: center; font-size: 11px; }
 .auth-switch button { padding: 0; border: 0; background: transparent; color: var(--orange-dark); cursor: pointer; font-size: inherit; font-weight: 700; }
+.auth-notice { position: fixed; z-index: 9; top: 88px; right: 24px; display: flex; align-items: flex-start; gap: 12px; width: min(360px, calc(100vw - 32px)); margin: 0; padding: 12px; border: 1px solid #e8d6a5; border-radius: 5px; background: #fff8e6; color: #70551b; box-shadow: 0 8px 24px #17130f18; font-size: 12px; line-height: 1.5; }
+.auth-notice button { flex: 0 0 auto; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; }
+
+.profile-main { max-width: 760px; margin: 45px auto 80px; padding: 0 24px; }
+.profile-heading { margin-bottom: 28px; }
+.profile-heading h1 { margin: 12px 0 7px; font-family: Georgia, "Times New Roman", serif; font-size: 40px; font-weight: 500; letter-spacing: -1px; }
+.profile-heading p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.profile-card { display: grid; gap: 18px; margin-top: 20px; padding: 25px; border: 1px solid var(--line); border-radius: 8px; background: white; }
+.profile-card h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 500; }
+.profile-card-description { margin: -10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.profile-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.profile-form-actions { display: flex; align-items: center; gap: 14px; }
+.profile-message { position: fixed; z-index: 9; top: 88px; right: 24px; width: min(360px, calc(100vw - 32px)); margin: 0; padding: 12px; border: 1px solid #d5e5d7; border-radius: 5px; background: #f3f8f2; color: #386e45; box-shadow: 0 8px 24px #17130f18; font-size: 12px; line-height: 1.5; }
+.profile-message-error { border-color: #efc9bf; background: #fff3ef; color: #a63c23; }
+.profile-access-message { margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; font-size: 13px; line-height: 1.6; }
 
 .hero { position: relative; min-height: 390px; max-width: 1240px; margin: 0 auto; padding: 57px 76px 55px; overflow: hidden; border-radius: 10px; background: #f2e7d8; }
 .hero-copy { position: relative; z-index: 1; max-width: 540px; }
@@ -215,6 +230,10 @@ button { color: inherit; }
   .top-cart { gap: 6px; padding: 8px 10px; }
   .top-points-counter { padding: 8px 9px; font-size: 10px; }
   .auth-modal { padding: 32px 24px 24px; }
+  .profile-main { margin-top: 30px; padding: 0 16px; }
+  .profile-heading h1 { font-size: 34px; }
+  .profile-card { padding: 20px; }
+  .profile-form-grid { grid-template-columns: 1fr; }
   .hero { min-height: 460px; margin: 0 12px; padding: 39px 27px 48px; }
   .hero h1 { font-size: clamp(51px, 13vw, 68px); }
   .hero-copy > p { max-width: 285px; font-size: 12px; }
