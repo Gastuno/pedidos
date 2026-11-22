@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         },
       }),
       prisma.estado.findMany({
-        orderBy: { nombre: "asc" },
+        orderBy: { orden: "asc" },
         select: { id: true, nombre: true },
       }),
     ]);
