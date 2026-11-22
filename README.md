@@ -4,7 +4,7 @@ Aplicación de compra online para un local de comida.
 
 ## Configuración
 
-Este proyecto requiere un archivo `.env` donde se va a configurar::
+Este proyecto requiere un archivo `.env` donde se va a configurar:
 
 - `DATABASE_URL`: conexión de la aplicación a Supabase.
 - `DIRECT_URL`: conexión directa de Supabase para ejecutar migraciones.
@@ -20,8 +20,3 @@ npm run db:migrate
 npm run db:generate
 npm run dev
 ```
-
-La carga inicial agrega ocho productos de ejemplo únicamente si el catálogo está vacío. Las imágenes se leen del campo `imageUrl` de cada fila en `Product`; `npm run db:seed` completa las imágenes faltantes de los productos de ejemplo sin reemplazar URLs que ya hayas configurado.
-
-
-Para una compilación de producción: `npm run build` y `npm run start`.
