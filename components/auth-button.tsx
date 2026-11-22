@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 type Props = {
   cartButton?: ReactNode;
   adminLink?: boolean;
+  returnToStore?: boolean;
   onSignedOut?: () => void;
 };
 type AuthMode = "sign-in" | "sign-up";
@@ -62,6 +63,7 @@ async function syncProfile(accessToken: string) {
 export default function AuthButton({
   cartButton,
   adminLink = false,
+  returnToStore = false,
   onSignedOut,
 }: Props) {
   const [user, setUser] = useState<User | null>(null);
@@ -219,8 +221,8 @@ export default function AuthButton({
         </a>
       )}
       {user && (
-        <a className="admin-nav-link" href="/perfil">
-          Mi perfil
+        <a className="admin-nav-link" href={returnToStore ? "/" : "/perfil"}>
+          {returnToStore ? "Volver a la tienda" : "Mi perfil"}
         </a>
       )}
       <button

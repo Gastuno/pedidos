@@ -68,8 +68,8 @@ button { color: inherit; }
 .profile-card-description { margin: -10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .profile-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .profile-form-actions { display: flex; align-items: center; gap: 14px; }
-.profile-message { margin: 0; color: var(--green); font-size: 12px; line-height: 1.5; }
-.profile-message-error { color: #a63c23; }
+.profile-message { position: fixed; z-index: 9; top: 88px; right: 24px; width: min(360px, calc(100vw - 32px)); margin: 0; padding: 12px; border: 1px solid #d5e5d7; border-radius: 5px; background: #f3f8f2; color: #386e45; box-shadow: 0 8px 24px #17130f18; font-size: 12px; line-height: 1.5; }
+.profile-message-error { border-color: #efc9bf; background: #fff3ef; color: #a63c23; }
 .profile-access-message { margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; font-size: 13px; line-height: 1.6; }
 
 .hero { position: relative; min-height: 390px; max-width: 1240px; margin: 0 auto; padding: 57px 76px 55px; overflow: hidden; border-radius: 10px; background: #f2e7d8; }

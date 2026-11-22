@@ -231,7 +231,7 @@ export default function ProfilePage() {
           <span className="brand-mark">P</span>
           <span>pedivos<span className="brand-period">.</span></span>
         </a>
-        <AuthButton onSignedOut={() => window.location.assign("/")} />
+        <AuthButton onSignedOut={() => window.location.assign("/")} returnToStore />
       </header>
 
       <section className="profile-main">
