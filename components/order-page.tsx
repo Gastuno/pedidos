@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import AuthButton from "./auth-button";
 import AdminProducts, { type Product } from "./admin-products";
+import ProductMenu from "./product-menu";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { puntosRequeridosPorMonto } from "../lib/order-request";
 
@@ -430,53 +431,13 @@ export default function OrderPage({ products, heroImageUrl, adminMode = false }:
       </section>
 
       <section className="menu-layout" id="menu">
-        <div className="menu-main">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">EL MENÚ</span>
-              <h2>¿Qué se te antoja?</h2>
-            </div>
-            <span className="menu-count">{menuProducts.length} cosas ricas</span>
-          </div>
-
-          {menuProducts.length === 0 ? (
-            <div className="empty-menu">
-              <h3>Estamos preparando el menú</h3>
-              <p>En un ratito vas a poder pedir tus favoritos.</p>
-            </div>
-          ) : (
-            <div className="product-grid">
-              {menuProducts.map((product, index) => (
-                <article className="product-card" key={product.id}>
-                  <div className={`product-visual visual-${index % 4}`}>
-                    {product.imageUrl ? (
-                      <img className="product-image" src={product.imageUrl} alt={product.name} />
-                    ) : (
-                      <span className="image-placeholder">Sin imagen</span>
-                    )}
-                    <span className="product-category">Del menú</span>
-                  </div>
-                  <div className="product-info">
-                    <div className="product-title-row">
-                      <h3>{product.name}</h3>
-                      <span className="product-price">{money.format(product.price)}</span>
-                    </div>
-                    {product.description && <p>{product.description}</p>}
-                    <button
-                      className={`add-button${cart[product.id] ? " has-quantity" : ""}`}
-                      onClick={() => changeQuantity(product.id, 1)}
-                      disabled={checkoutReady}
-                      type="button"
-                      aria-label={`Agregar ${product.name} al pedido`}
-                    >
-                      {cart[product.id] ? `Agregar otro · ${cart[product.id]} en tu pedido` : "＋ Agregar"}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductMenu
+          products={menuProducts}
+          cart={cart}
+          checkoutReady={checkoutReady}
+          formatPrice={(price) => money.format(price)}
+          onChangeQuantity={changeQuantity}
+        />
 
         <aside className="order-panel" id="tu-pedido">
           <div className="order-panel-heading">
