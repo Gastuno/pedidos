@@ -1,8 +1,7 @@
-# Pedivos
-
+Pedivos
 Aplicación de compra online para un local de comida.
 
-## Configuración
+Configuración
 
 Este proyecto requiere un archivo `.env` donde se va a configurar:
 
@@ -12,11 +11,8 @@ Este proyecto requiere un archivo `.env` donde se va a configurar:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: clave pública (anon/publishable) del proyecto para autenticación.
 
 
-## Ejecución
+Ejecución:
 
-```bash
-npm install
-npm run db:migrate
-npm run db:generate
-npm run dev
-```
+- npm install
+- npm run db:generate
+- npm run dev
